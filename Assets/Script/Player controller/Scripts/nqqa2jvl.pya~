@@ -1,0 +1,118 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class playerStats : MonoBehaviour
+{
+
+
+    float maxStamina = 100;
+    float maxHealth = 100;
+    float currentStamina = 100;
+    float currentHealth = 100;
+
+    public float healthRegenRate;
+    public float staminaRegenRate;
+
+    playerController controllerScript;
+    [HideInInspector] public bool coroutineDone = false;
+
+    [HideInInspector] public bool runningCoroutineDone = false;
+
+
+
+    // Start is called before the first frame update
+    void Start()
+    {
+
+        controllerScript = GetComponent<playerController>();
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        //Overtime regen if no action is ocurring and stamina is below max
+        if (!controllerScript.actionsBusy && currentStamina < maxStamina && coroutineDone)
+        {
+            coroutineDone = false;
+            StopAllCoroutines();
+            StartCoroutine(staminaRegenTimeout(1f));
+        }
+
+        //Check if player is sprinting and call the coroutine
+        if (controllerScript._input.sprint)
+        {
+            runningCoroutineDone = true;
+        }
+
+        //If stamina is higher than player's sprint stamina then consume 1 per second
+        if (currentStamina >= controllerScript.sprintStamina && runningCoroutineDone)
+        {
+            runningCoroutineDone = false; 
+            StopAllCoroutines();
+            StartCoroutine(staminaDeductionTimeout(controllerScript.sprintStamina));
+        }
+       
+    }
+
+    public IEnumerator staminaDeductionTimeout(float deduction)
+    {
+        //Time = regen every N seconds
+        //1s / 3 = 1 stamina every 0.3333 seconds
+
+        float count = 0;
+        while (count < 1f)
+        {
+            yield return new WaitForSeconds(1f / deduction);
+            if (currentStamina == 0f)
+            {
+                runningCoroutineDone = false;
+                yield break;
+            }
+            currentStamina -= deduction;
+            count += 1f / deduction;
+
+            Debug.Log("deducted stamina: " + currentStamina);
+        }
+        runningCoroutineDone = true;
+
+    }
+
+    public IEnumerator staminaRegenTimeout(float time)
+    {
+        //Time = regen every N seconds
+        //staminaRegenRate = regen N stamina / second
+        //1s / 3 = 1 stamina every 0.3333 seconds
+
+        float count = 0;
+        while (count < time)
+        {
+            yield return new WaitForSeconds(time/staminaRegenRate);
+            if (controllerScript.actionsBusy || currentStamina == maxStamina)
+            {
+                coroutineDone = true;
+                yield break;
+            }
+            currentStamina++;
+            count+= time / staminaRegenRate;
+
+            Debug.Log("Stamina: " + currentStamina);
+        }
+        coroutineDone = true;
+
+    }
+
+
+    public float getStamina()
+    {
+        return currentStamina;
+    }
+    public void deductStamina(float deductedPoints)
+    {
+        currentStamina -= deductedPoints;
+    }
+
+
+
+}
